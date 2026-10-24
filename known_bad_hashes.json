@@ -1,0 +1,37 @@
+{
+  "description": "Aegis-X Local Known Malicious Hash Registry",
+  "updated_at": "2026-10-25T00:00:00Z",
+  "hashes": {
+    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": {
+      "malware_family": "EICAR-Standard-AV-Test-File",
+      "severity": "CRITICAL",
+      "threat_type": "Test Signature",
+      "score": 100
+    },
+    "44d88612fea8a8f36de82e1278abb02f": {
+      "malware_family": "EICAR-MD5",
+      "severity": "CRITICAL",
+      "threat_type": "Test Signature",
+      "score": 100
+    },
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": {
+      "malware_family": "Zero-Byte-Null-Anomaly",
+      "severity": "MEDIUM",
+      "threat_type": "Empty Anomaly",
+      "score": 35
+    },
+    "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90": {
+      "malware_family": "Trojan.Dropper.Win32.Synthetic",
+      "severity": "CRITICAL",
+      "threat_type": "Trojan Dropper",
+      "score": 100
+    },
+    "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2": {
+      "malware_family": "Ransom.WannaCry.Payload",
+      "severity": "CRITICAL",
+      "threat_type": "Ransomware",
+      "score": 100
+    }
+  }
+}
+

